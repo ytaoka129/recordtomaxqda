@@ -1,2 +1,2 @@
 # recordtomaxqda
-zoom録音等をGoogle Speech to text を経由してMaxqdaに埋め込むためのコード
+zoom録音等の音声ファイルをGoogle Speech to text を経由して，話者識別・タイムスタンプ付きで，Maxqdaに埋め込むためのコード
