@@ -13,7 +13,7 @@ from google.cloud import speech
 
 # libraryの更新，jsonの提示　イマイチちゃんと動いてません．
 def initialize():
-    # key = 'export GOOGLE_APPLICATION_CREDENTIALS="/Volumes/GoogleDrive/マイドライブ/Research/SpeechtoText/speech-304712-55f1e3fc5bdb.json"'
+    # key = 'export GOOGLE_APPLICATION_CREDENTIALS="/Volumes/.json"'
     update1 = 'pip install --upgrade google-cloud-speech --ignore-installed'
     update2 = 'pip install --upgrade google-cloud-storage'
     # subprocess.call(key, shell=True)
