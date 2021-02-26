@@ -6,6 +6,7 @@
 import csv
 import subprocess
 import os
+from ast import literal_eval
 from google.cloud import storage
 from google.cloud import speech
 
@@ -13,10 +14,15 @@ from google.cloud import speech
 
 # libraryの更新，jsonの提示　イマイチちゃんと動いてません．
 def initialize():
-    # key = 'export GOOGLE_APPLICATION_CREDENTIALS="/Volumes/.json"'
+    # key = 'export GOOGLE_APPLICATION_CREDENTIALS= [path]'
+    # key = [export, GOOGLE_APPLICATION_CREDENTIALS=, [path]]
+    # key = set GOOGLE_APPLICATION_CREDENTIALS=[PATH]
+    # key = ['set','GOOGLE_APPLICATION_CREDENTIALS=',""]
     update1 = 'pip install --upgrade google-cloud-speech --ignore-installed'
     update2 = 'pip install --upgrade google-cloud-storage'
-    # subprocess.call(key, shell=True)
+    # update1 = ['pip', 'install', '--upgrade', 'google-cloud-speech', '--ignore-installed']
+    # update2 = ['pip', 'install', '--upgrade', 'google-cloud-storage']
+    # subprocess.call(key)
     subprocess.call(update1, shell=True)
     subprocess.call(update2, shell=True)
 
@@ -44,7 +50,7 @@ def transcribe_gcs(gcs_uri, file_path, file_path2, nspeakers):
     operation = client.long_running_recognize(config=config, audio=audio)
 
     print("Waiting for operation to complete...")
-    result = operation.result(timeout=90)
+    result = operation.result(timeout=3600)
 
     # Each result is for a consecutive portion of the audio. Iterate through
     # them to get the transcripts for the entire audio file.
@@ -109,9 +115,8 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
 
 # flacファイルの生成
 def create_flac(directory, filename, filename_extension):
-    #####オリジナルファイルの拡張子指定はここ
-    original_file = directory + filename_extension
-    convereted_file = directory + filename + '.flac'
+    original_file = directory + '/' + filename_extension
+    convereted_file = directory + '/' + filename + '.flac'
     cmd =  'ffmpeg -i "'+ original_file + '" -ac 1 -ar 32000 "' + convereted_file + '"'
     # Zoom録音に合わせています．
     subprocess.call(cmd, shell=True)
@@ -147,43 +152,90 @@ def maxqda_readable(filepath1, filepath2):
                 f.write(item[3] + '\n')
                 f.write(item[1] + '\n')
 
+#create configfile
+def Create_config():
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    file = cwd+"/configfile.txt"
+    with open(file, 'w', encoding='UTF-8') as f:
+        config = {'bucket_name': 'test', 'nspeakers': 2}
+        config["bucket_name"] = input('enter bucket name in google cloud storage:')
+        print(config["bucket_name"])
+        config["nspeakers"] = input('enter number of speakers in the recordings:')
+        print(config["nspeakers"])
+        f.write(str(config))
+        return
 
-### 実行
-initialize()
-print("end initialize")
+#read config file
+def Read_config():
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    print(cwd)
+    file = cwd+"/configfile.txt"
+    print(file)
+    with open(file, 'r', encoding='UTF-8') as f:
+        config = f.read()
+        config_dict = literal_eval(config)
+        bucket_name = config_dict["bucket_name"]
+        nspeakers = int(config_dict["nspeakers"])
+        print("Google Cloud Storage bucket name:", bucket_name)
+        print("The numbers of speakers:", nspeakers)
+    return config_dict
+
+
+############################### 実行 #############3######################
+init_nt = input('Do you want to initialize? [y/n]')
+if init_nt == 'y':
+    initialize()
+    print("end initialize")
+
+
+#configの変更を希望するか確認
+change_config = input('Do you want to change config file? [y/n]')
+if change_config == 'y':
+    Create_config()
+
+config_dict = Read_config()
+print("end reading config file")
 
 ##ファイル入力
-filename_extension = input('Enter file name with file extension:')
-filename = str(os.path.splitext(filename_extension))
-print(filename_extension)
-print(filename)
-directory = input('Enter file directory:')
-print(directory)
-bucket_name = input('enter bucket name in google cloud storage:')
-print(bucket_name)
-nspeakers = input('enter number of speakers in the recordings:')
+filename_directory_extension = input('Enter file name with directory and file extension eg. /volumes/home/test.m4a :')
+filename_extension = os.path.basename(filename_directory_extension)
+filename = str(os.path.splitext(filename_extension)[0])
+directory = os.path.dirname(filename_directory_extension)
+# print(filename_directory_extension)
+# print(filename_extension)
+# print(filename)
+# print(directory)
 
 ### 変数設定　
-# directory = '/Volumes/'
-# bucket_name = "your_bucket_name"
+bucket_name = config_dict["bucket_name"]
+nspeakers = int(config_dict["nspeakers"])
 
 
 #変数計算
 uri = 'gs://'+ bucket_name + '/' + filename + '.flac'
-file_path1 = directory + filename + 'word.csv' #生の読み出し単語スタンプ結果
-file_path2 = directory + filename + '.txt' #生の読み出し結果文章txt
-file_path3 = directory + filename + '_tailored.csv' #整理後の読み出し結果
-file_path4 = directory + filename + '_maxqda.txt' #整理後のMaxqda向け結果
-source_file_name = directory + filename + '.flac'
+file_path1 = directory + '/' + filename + 'word.csv' #生の読み出し単語スタンプ結果
+file_path2 = directory + '/' + filename + '.txt' #生の読み出し結果文章txt
+file_path3 = directory + '/' + filename + '_tailored.csv' #整理後の読み出し結果
+file_path4 = directory + '/' + filename + '_maxqda.txt' #整理後のMaxqda向け結果
+source_file_name = directory + '/' + filename + '.flac' #flacファイル生成先
 destination_blob_name = filename + '.flac'
 
 ### 実行コマンド郡
-create_flac(directory, filename, filename_extension)
-print("endcreateflac")
-upload_blob(bucket_name, source_file_name, destination_blob_name)
-print ("enduploadblob")
-transcribe_gcs(uri, file_path1, file_path2, nspeakers)
-print("endtranscribe")
+yesno = input('Do you want to create flac file? [y/n]')
+if yesno == 'y':
+    create_flac(directory, filename, filename_extension)
+    print("endcreateflac")
+
+yesno = input('Do you want to upload file to Google cloud storage? [y/n]')
+if yesno == 'y':
+    upload_blob(bucket_name, source_file_name, destination_blob_name)
+    print ("enduploadblob")
+
+yesno = input('Do you want to transcribe? [y/n]')
+if yesno == 'y':
+    transcribe_gcs(uri, file_path1, file_path2, nspeakers)
+    print("endtranscribe")
+
 tailor_result(file_path1, file_path3)
 print("end tailoring")
 maxqda_readable(file_path3, file_path4)
