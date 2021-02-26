@@ -1,1 +1,1 @@
-{'bucket_name': 'research_design', 'nspeakers': '2'}
+{'bucket_name': 'hogehoge', 'nspeakers': '2'}
